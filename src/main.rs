@@ -7,12 +7,13 @@ use std::io::Write;
 use std::option;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::ptr::copy_nonoverlapping;
 use std::thread;
 use std::time::Duration;
 
 use colored::*;
 use rfd::FileDialog;
-use crate::PathError::NotWritable;
+use crate::PathError::{NotDirectory, NotWritable};
 
 const MAX_SIZE_BYTES: u64 = 8 * 1024 * 1024;
 
@@ -552,35 +553,34 @@ enum PathError {
 }
 */
 fn ask_media_path() -> PathSelection {
-    let media_path = match prompt_for_hpath("Choose your Media path.") {
+    let media_path = match prompt_for_path("Choose your Media path.") {
         PathSelection::Selected(path) => path,
         PathSelection::Cancelled => return PathSelection::Cancelled,
-        PathSelection::Invalid(NotWritable) => {
-            println!("{}", )
-        }
+        PathSelection::Invalid(NotWritable) => return PathSelection::Invalid(NotWritable),
+        PathSelection::Invalid(PathError::Empty) => return PathSelection::Invalid(PathError::Empty),
+        PathSelection::Invalid(NotDirectory) => return PathSelection::Invalid(NotDirectory),
     };
     PathSelection::Selected(media_path)
 }
 fn ask_music_path() -> PathSelection {
-    let music_path = match prompt_for_path("Choose your Music path") {
-        Some(path) if !path.as_os_str().is_empty() => path,
-        None => {
-            println!("{}", "No Music path were selected.".bold().yellow());
-            return PathSelection::Cancelled;
-        }
-        Some(_) => {
-            println!("{}", "The selected Music path was empty".bold().yellow());
-            return PathSelection::Invalid;
-        }
+    let music_path = match prompt_for_path("Choose your Music path.") {
+        PathSelection::Selected(path) => path,
+        PathSelection::Cancelled => return PathSelection::Cancelled,
+        PathSelection::Invalid(NotWritable) => return PathSelection::Invalid(NotWritable),
+        PathSelection::Invalid(PathError::Empty) => return PathSelection::Invalid(PathError::Empty),
+        PathSelection::Invalid(NotDirectory) => return PathSelection::Invalid(NotDirectory)
+
     };
     PathSelection::Selected(music_path)
 }
 
 fn ask_video_path() -> PathSelection {
     let video_path = match prompt_for_path("Choose your Video path") {
-        Some(path) if !path.as_os_str().is_empty() => path,
-        None => return PathSelection::Cancelled,
-        Some(_) => return PathSelection::Invalid,
+        PathSelection::Selected(path) => path,
+        PathSelection::Cancelled => return PathSelection::Cancelled,
+        PathSelection::Invalid(NotWritable) => return PathSelection::Invalid(NotWritable),
+        PathSelection::Invalid(PathError::Empty) => return PathSelection::Invalid(PathError::Empty),
+        PathSelection::Invalid(NotDirectory) => return PathSelection::Invalid(NotDirectory)
     };
     PathSelection::Selected(video_path)
 }
